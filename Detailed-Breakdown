@@ -1,0 +1,73 @@
+READ THIS IF YOU HAVE NO IDEA WHAT IS GOING ON OR WOULD LIKE TO BE REFRESHED !
+
+This is a task that is not hard to understand if you pay attention and understand but there are a few key elements you need to know. 
+what is kubernetes ?
+what is cnaary deployment ?
+what is jenkins ?
+
+We started this by forking the repo which willab had all the files already.
+We just changed the name in the jenkins file to our github name because we cant do this as him. 
+We then create a github personal access token and we go to jenkins public ip address and add our github username and personal access token.
+Add another credentioal but this time it your dokcer hub username and your docker hub password becuse they dont offer more secure thinsg kike access token.
+(if you feel uncomfortable you could create a temporary account on dockerhub and delete it after everthing)
+
+Now jenkins is connected to our stuff and we can continue.
+Run the build on jenkins now. 
+We can do that because you have your info setup in the github jenkinsfile (your username)
+We can now hit proceed on the last stage of the jenkins build becuase we have in the file that we need manualy human intervention on the last step for the file to run
+We now see the build running successful 
+We can ping our public ip and we can see the app with train schedule(s) running.
+Addditionally we can get more insight buy running out kubernetes commands to get the pods and see new ones while the old ones delete
+
+Now lets do the canary deployment
+We make a new file named train-schedule-kube-canary.yml
+Before we had the file train-schedule-kube.yml
+The new file lets us run the canary changes and based on what we put in these files they dont override each other.
+Overall the same content from the old file we add to the new file we created (train-schedule-kube-canary.yml)
+We make some revisions and add different scpecs and the deployment changed to the v 
+Also node port is still port 8080 but we add 8081 along with a few other changes and commit.
+
+Now we need to make changes to the jenkins file to make sure it know we want the canary file to do specific things
+We add some stages like Canary Deploy 
+
+#  stage('CanaryDeploy') {
+            when {
+                branch 'master'
+            }
+            environment { 
+                CANARY_REPLICAS = 1
+            }
+            steps {
+                kubernetesDeploy(
+                    kubeconfigId: 'kubeconfig',
+                    configs: 'train-schedule-kube-canary.yml',
+                    enableConfigSubstitution: true
+                )
+            }
+Then we go add more like 
+
+# when {
+                branch 'master'
+            }
+            environment { 
+                CANARY_REPLICAS = 0
+            }
+            steps {
+                input 'Deploy to Production?'
+                milestone(1)
+                kubernetesDeploy(
+                    kubeconfigId: 'kubeconfig',
+                    configs: 'train-schedule-kube-canary.yml',
+                    enableConfigSubstitution: true
+
+What these do because the build goes in order from top to bottom it will beploy the canary and only deploy to prod if that step passes first.
+Now we have the changes we commit this file also.
+Then we go to jenkins and check the build and when we do we see it working and we proceed the last step that work execute iunleess we selct proceed.
+Everything ins successfull now and we can check and go to the public ip addess and see the updated train schedule when you click each train
+You may have to add port 8081 not 8080 to see the canary version.
+
+
+
+
+Here is a link to the lab all the ifo is there along with the video and written guide
+https://learn.acloud.guru/handson/f2dc0fe6-0c4a-4647-baca-5eaef5f92caa
